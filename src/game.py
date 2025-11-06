@@ -13,6 +13,13 @@ BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
 GREEN = (0, 255, 0)
 RED = (255, 0, 0)
+BLUE = (0, 0, 255)
+
+def draw_stripe_rect(screen, x, y, w, h, color=BLUE, stripe_width=4):
+    # Draw vertical stripes
+    for i in range(0, w, stripe_width):
+        pygame.draw.line(screen, color, (x + i, y), (x + i, y + h - 1))
+    # Optionally, alternate colors, but for simplicity, just blue stripes
 
 # Screen dimensions
 SCREEN_WIDTH = 800
@@ -44,28 +51,30 @@ class SnakeGame:
 
     def load_config(self):
         try:
-            tree = ET.parse('../config.xml')
+            tree = ET.parse('config.xml')
             root = tree.getroot()
             self.fps = int(root.find('fps').text)
             self.udp_ip = root.find('udp_ip').text
             self.udp_port = int(root.find('udp_port').text)
             obstacles_enabled = int(root.find('obstacles').text)
-        except:
+            num_obstacles = int(root.find('num_obstacles').text) if root.find('num_obstacles') is not None else 50
+        except Exception as e:
             self.fps = 6
             self.udp_ip = "0.0.0.0"
             self.udp_port = 5005
             obstacles_enabled = 0
+            num_obstacles = 50
         
         self.obstacles = []
         if obstacles_enabled:
-            # Generate random maze obstacles
-            num_obstacles = 30  # Number of obstacle blocks
+            # Generate random maze obstacles, each 2x2 blocks
+            obs_size = 2 * BLOCK_SIZE
             for _ in range(num_obstacles):
-                x = random.randint(0, (SCREEN_WIDTH // BLOCK_SIZE) - 1) * BLOCK_SIZE
-                y = random.randint(0, (SCREEN_HEIGHT // BLOCK_SIZE) - 1) * BLOCK_SIZE
+                x = random.randint(0, (SCREEN_WIDTH // obs_size) - 1) * obs_size
+                y = random.randint(0, (SCREEN_HEIGHT // obs_size) - 1) * obs_size
                 # Avoid the starting area of the snake (top-left corner)
-                if not (x < 100 and y < 100):
-                    self.obstacles.append((x, y))
+                if not (x < 200 and y < 200):
+                    self.obstacles.append((x, y, obs_size, obs_size))
 
     def reset(self):
         start_x = (SCREEN_WIDTH // 2) // BLOCK_SIZE * BLOCK_SIZE
@@ -80,7 +89,7 @@ class SnakeGame:
         while True:
             x = random.randint(0, SCREEN_WIDTH // BLOCK_SIZE - 1) * BLOCK_SIZE
             y = random.randint(0, SCREEN_HEIGHT // BLOCK_SIZE - 1) * BLOCK_SIZE
-            if (x, y) not in self.snake and (x, y) not in self.obstacles:
+            if (x, y) not in self.snake and not any(obs[0] <= x < obs[0] + obs[2] and obs[1] <= y < obs[1] + obs[3] for obs in self.obstacles):
                 return (x, y)
 
     def move_snake(self):
@@ -96,7 +105,7 @@ class SnakeGame:
 
         if (new_head[0] < 0 or new_head[0] >= SCREEN_WIDTH or
             new_head[1] < 0 or new_head[1] >= SCREEN_HEIGHT or
-            new_head in self.snake or new_head in self.obstacles):
+            new_head in self.snake or any(obs[0] <= new_head[0] < obs[0] + obs[2] and obs[1] <= new_head[1] < obs[1] + obs[3] for obs in self.obstacles)):
             self.game_over = True
             print("Game over triggered")
             return
@@ -113,7 +122,7 @@ class SnakeGame:
         for segment in self.snake:
             pygame.draw.rect(self.screen, GREEN, (segment[0], segment[1], BLOCK_SIZE, BLOCK_SIZE))
         for obs in self.obstacles:
-            pygame.draw.rect(self.screen, BLACK, (obs[0], obs[1], BLOCK_SIZE, BLOCK_SIZE))
+            draw_stripe_rect(self.screen, obs[0], obs[1], obs[2], obs[3])
         pygame.draw.rect(self.screen, RED, (self.food[0], self.food[1], BLOCK_SIZE, BLOCK_SIZE))
         font = pygame.font.SysFont(None, 35)
         text = font.render(f"Score: {self.score}", True, WHITE)

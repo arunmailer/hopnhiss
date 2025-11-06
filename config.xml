@@ -3,6 +3,6 @@
     <fps>6</fps>
     <udp_ip>0.0.0.0</udp_ip>
     <udp_port>5005</udp_port>
-    <obstacles>0</obstacles>
-</config></content>
-<parameter name="filePath">d:\Projects\hopnhiss\hopnhiss\config.xml
+    <obstacles>1</obstacles>
+    <num_obstacles>20</num_obstacles>
+</config>
