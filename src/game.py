@@ -2,6 +2,7 @@ import pygame
 import socket
 import pickle
 import time
+import random
 
 # Initialize Pygame
 pygame.init()
@@ -17,7 +18,7 @@ SCREEN_WIDTH = 800
 SCREEN_HEIGHT = 600
 
 # Block size
-BLOCK_SIZE = 20
+BLOCK_SIZE = 15
 
 # FPS
 FPS = 10
@@ -35,7 +36,7 @@ RIGHT = 'RIGHT'
 class SnakeGame:
     def __init__(self):
         self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-        pygame.display.set_caption("Snake Game")
+        pygame.display.set_caption("Hop 'n' Hiss")
         self.clock = pygame.time.Clock()
         self.reset()
 
@@ -48,8 +49,8 @@ class SnakeGame:
 
     def generate_food(self):
         while True:
-            x = (pygame.time.get_ticks() % (SCREEN_WIDTH // BLOCK_SIZE)) * BLOCK_SIZE
-            y = (pygame.time.get_ticks() % (SCREEN_HEIGHT // BLOCK_SIZE)) * BLOCK_SIZE
+            x = random.randint(0, SCREEN_WIDTH // BLOCK_SIZE - 1) * BLOCK_SIZE
+            y = random.randint(0, SCREEN_HEIGHT // BLOCK_SIZE - 1) * BLOCK_SIZE
             if (x, y) not in self.snake:
                 return (x, y)
 
@@ -92,36 +93,89 @@ class SnakeGame:
         sock.bind((UDP_IP, UDP_PORT))
         sock.setblocking(False)
 
-        print("Waiting for start signal from joystick...")
-        while True:
-            try:
-                data, addr = sock.recvfrom(1024)
-                print("Start signal received, starting game...")
+        running = True
+        while running:
+            print("Waiting for start signal from joystick...")
+            waiting_start = True
+            while waiting_start:
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT:
+                        blinking = False
+                        waiting_restart = False
+                        running = False
+                try:
+                    data, addr = sock.recvfrom(1024)
+                    print("Start signal received, starting game...")
+                    waiting_start = False
+                except BlockingIOError:
+                    pass
+                
+                self.screen.fill(BLACK)
+                font = pygame.font.SysFont(None, 35)
+                text = font.render("Waiting for joystick input...", True, WHITE)
+                self.screen.blit(text, (SCREEN_WIDTH // 2 - 150, SCREEN_HEIGHT // 2 - 20))
+                pygame.display.update()
+                time.sleep(0.1)
+
+            if not running:
                 break
-            except BlockingIOError:
-                pass
-            time.sleep(0.1)
 
-        while not self.game_over:
-            try:
-                data, addr = sock.recvfrom(1024)
-                direction = pickle.loads(data).decode()
-                if direction in [UP, DOWN, LEFT, RIGHT]:
-                    self.direction = direction
-            except BlockingIOError:
-                pass
+            self.reset()
+            while not self.game_over:
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT:
+                        self.game_over = True
+                        running = False
+                try:
+                    data, addr = sock.recvfrom(1024)
+                    direction = pickle.loads(data).decode()
+                    if direction in [UP, DOWN, LEFT, RIGHT]:
+                        self.direction = direction
+                except BlockingIOError:
+                    pass
 
-            self.move_snake()
-            self.draw()
-            self.clock.tick(FPS)
+                self.move_snake()
+                self.draw()
+                self.clock.tick(FPS)
+
+            if not running:
+                break
 
         # Game over screen
-        font = pygame.font.SysFont(None, 55)
-        text = font.render("Game Over", True, WHITE)
-        self.screen.blit(text, (SCREEN_WIDTH // 2 - 100, SCREEN_HEIGHT // 2 - 50))
-        pygame.display.update()
-        time.sleep(2)
-        pygame.quit()
+        flash_count = 0
+        visible = True
+        flash_timer = time.time()
+        blinking = True
+        waiting_restart = True
+        while blinking or waiting_restart:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    blinking = False
+                    waiting_restart = False
+                elif event.type == pygame.KEYDOWN and not blinking:
+                    self.reset()
+                    waiting_restart = False
+            
+            current_time = time.time()
+            if blinking and current_time - flash_timer > 0.5:
+                visible = not visible
+                flash_timer = current_time
+                flash_count += 1
+                if flash_count >= 8:  # 4 blinks (8 toggles)
+                    blinking = False
+                    visible = True  # Show steady
+            
+            self.screen.fill(BLACK)
+            if visible:
+                font = pygame.font.SysFont(None, 55)
+                text = font.render("Game Over", True, WHITE)
+                self.screen.blit(text, (SCREEN_WIDTH // 2 - 100, SCREEN_HEIGHT // 2 - 50))
+            if not blinking:
+                font_small = pygame.font.SysFont(None, 35)
+                restart_text = font_small.render("Press any key to restart", True, WHITE)
+                self.screen.blit(restart_text, (SCREEN_WIDTH // 2 - 120, SCREEN_HEIGHT // 2 + 20))
+            pygame.display.update()
+            time.sleep(0.1)
 
 if __name__ == "__main__":
     game = SnakeGame()
