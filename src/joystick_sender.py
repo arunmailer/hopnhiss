@@ -6,6 +6,11 @@ import time
 # Initialize Pygame
 pygame.init()
 
+# Set up the display
+screen = pygame.display.set_mode((400, 300), pygame.RESIZABLE)
+pygame.display.set_caption("Hop 'n' Hiss Controller")
+font = pygame.font.SysFont(None, 24)
+
 # UDP settings
 UDP_IP = "127.0.0.1"  # Change to the IP of the game device
 UDP_PORT = 5005
@@ -62,6 +67,10 @@ def get_direction():
 running = True
 last_direction = None
 while running:
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+    
     direction = get_direction()
     if direction == 'QUIT':
         running = False
@@ -69,6 +78,14 @@ while running:
         data = pickle.dumps(direction.encode())
         sock.sendto(data, (UDP_IP, UDP_PORT))
         last_direction = direction
+    
+    # Update display
+    screen.fill((0, 0, 0))
+    if last_direction:
+        text = font.render(f"Sending: {last_direction}", True, (255, 255, 255))
+        screen.blit(text, (10, 10))
+    pygame.display.flip()
+    
     time.sleep(0.1)  # Poll every 100ms
 
 pygame.quit()
