@@ -1,0 +1,14 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Run Project",
+			"type": "shell",
+			"command": "/Users/arunkumar/MyData/Projects/hopnhiss/.venv/bin/python src/main.py",
+			"args": [],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		}
+	]
+}
