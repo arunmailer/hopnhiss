@@ -58,17 +58,14 @@ class SnakeGame:
         
         self.obstacles = []
         if obstacles_enabled:
-            # Simple maze: a cross in the center
-            center_x = SCREEN_WIDTH // 2 // BLOCK_SIZE * BLOCK_SIZE
-            center_y = SCREEN_HEIGHT // 2 // BLOCK_SIZE * BLOCK_SIZE
-            # Vertical line
-            for y in range(center_y - 5 * BLOCK_SIZE, center_y + 6 * BLOCK_SIZE, BLOCK_SIZE):
-                if 0 <= y < SCREEN_HEIGHT:
-                    self.obstacles.append((center_x, y))
-            # Horizontal line
-            for x in range(center_x - 5 * BLOCK_SIZE, center_x + 6 * BLOCK_SIZE, BLOCK_SIZE):
-                if 0 <= x < SCREEN_WIDTH:
-                    self.obstacles.append((x, center_y))
+            # Generate random maze obstacles
+            num_obstacles = 30  # Number of obstacle blocks
+            for _ in range(num_obstacles):
+                x = random.randint(0, (SCREEN_WIDTH // BLOCK_SIZE) - 1) * BLOCK_SIZE
+                y = random.randint(0, (SCREEN_HEIGHT // BLOCK_SIZE) - 1) * BLOCK_SIZE
+                # Avoid the starting area of the snake (top-left corner)
+                if not (x < 100 and y < 100):
+                    self.obstacles.append((x, y))
 
     def reset(self):
         start_x = (SCREEN_WIDTH // 2) // BLOCK_SIZE * BLOCK_SIZE
