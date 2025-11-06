@@ -41,7 +41,9 @@ class SnakeGame:
         self.reset()
 
     def reset(self):
-        self.snake = [(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)]
+        start_x = (SCREEN_WIDTH // 2) // BLOCK_SIZE * BLOCK_SIZE
+        start_y = (SCREEN_HEIGHT // 2) // BLOCK_SIZE * BLOCK_SIZE
+        self.snake = [(start_x, start_y)]
         self.direction = RIGHT
         self.food = self.generate_food()
         self.score = 0
