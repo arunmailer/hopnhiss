@@ -3,6 +3,7 @@ import socket
 import pickle
 import time
 import random
+import xml.etree.ElementTree as ET
 
 # Initialize Pygame
 pygame.init()
@@ -38,7 +39,36 @@ class SnakeGame:
         self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
         pygame.display.set_caption("Hop 'n' Hiss")
         self.clock = pygame.time.Clock()
+        self.load_config()
         self.reset()
+
+    def load_config(self):
+        try:
+            tree = ET.parse('../config.xml')
+            root = tree.getroot()
+            self.fps = int(root.find('fps').text)
+            self.udp_ip = root.find('udp_ip').text
+            self.udp_port = int(root.find('udp_port').text)
+            obstacles_enabled = int(root.find('obstacles').text)
+        except:
+            self.fps = 6
+            self.udp_ip = "0.0.0.0"
+            self.udp_port = 5005
+            obstacles_enabled = 0
+        
+        self.obstacles = []
+        if obstacles_enabled:
+            # Simple maze: a cross in the center
+            center_x = SCREEN_WIDTH // 2 // BLOCK_SIZE * BLOCK_SIZE
+            center_y = SCREEN_HEIGHT // 2 // BLOCK_SIZE * BLOCK_SIZE
+            # Vertical line
+            for y in range(center_y - 5 * BLOCK_SIZE, center_y + 6 * BLOCK_SIZE, BLOCK_SIZE):
+                if 0 <= y < SCREEN_HEIGHT:
+                    self.obstacles.append((center_x, y))
+            # Horizontal line
+            for x in range(center_x - 5 * BLOCK_SIZE, center_x + 6 * BLOCK_SIZE, BLOCK_SIZE):
+                if 0 <= x < SCREEN_WIDTH:
+                    self.obstacles.append((x, center_y))
 
     def reset(self):
         start_x = (SCREEN_WIDTH // 2) // BLOCK_SIZE * BLOCK_SIZE
@@ -53,7 +83,7 @@ class SnakeGame:
         while True:
             x = random.randint(0, SCREEN_WIDTH // BLOCK_SIZE - 1) * BLOCK_SIZE
             y = random.randint(0, SCREEN_HEIGHT // BLOCK_SIZE - 1) * BLOCK_SIZE
-            if (x, y) not in self.snake:
+            if (x, y) not in self.snake and (x, y) not in self.obstacles:
                 return (x, y)
 
     def move_snake(self):
@@ -69,7 +99,7 @@ class SnakeGame:
 
         if (new_head[0] < 0 or new_head[0] >= SCREEN_WIDTH or
             new_head[1] < 0 or new_head[1] >= SCREEN_HEIGHT or
-            new_head in self.snake):
+            new_head in self.snake or new_head in self.obstacles):
             self.game_over = True
             print("Game over triggered")
             return
@@ -85,6 +115,8 @@ class SnakeGame:
         self.screen.fill(BLACK)
         for segment in self.snake:
             pygame.draw.rect(self.screen, GREEN, (segment[0], segment[1], BLOCK_SIZE, BLOCK_SIZE))
+        for obs in self.obstacles:
+            pygame.draw.rect(self.screen, BLACK, (obs[0], obs[1], BLOCK_SIZE, BLOCK_SIZE))
         pygame.draw.rect(self.screen, RED, (self.food[0], self.food[1], BLOCK_SIZE, BLOCK_SIZE))
         font = pygame.font.SysFont(None, 35)
         text = font.render(f"Score: {self.score}", True, WHITE)
@@ -93,7 +125,7 @@ class SnakeGame:
 
     def run(self):
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.bind((UDP_IP, UDP_PORT))
+        sock.bind((self.udp_ip, self.udp_port))
         sock.setblocking(False)
 
         running = True
@@ -141,7 +173,7 @@ class SnakeGame:
 
                 self.move_snake()
                 self.draw()
-                self.clock.tick(FPS)
+                self.clock.tick(self.fps)
 
             # Game over screen
             flash_count = 0
